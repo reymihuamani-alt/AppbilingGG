@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#121212">
+  <title>Mixeo — Editor de transiciones</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22"><path d="M2 12c3-6 6-6 9 0s6 6 9 0" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M2 12c3 6 6 6 9 0s6-6 9 0" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" opacity=".45"/></svg>
+      </span>
+      <b>Mixeo</b><span class="badge">Pro</span>
+    </div>
+    <div class="top-actions">
+      <button class="icon-btn" id="undoBtn" title="Deshacer (Ctrl+Z)" aria-label="Deshacer">
+        <svg viewBox="0 0 24 24" width="20" height="20"><path d="M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="icon-btn" id="redoBtn" title="Rehacer (Ctrl+Shift+Z)" aria-label="Rehacer">
+        <svg viewBox="0 0 24 24" width="20" height="20"><path d="m15 14 5-5-5-5M20 9H10a6 6 0 0 0 0 12h3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="menu-wrap">
+        <button class="icon-btn" id="menuBtn" aria-label="Más opciones">
+          <svg viewBox="0 0 24 24" width="20" height="20"><circle cx="12" cy="5" r="2" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="12" cy="19" r="2" fill="currentColor"/></svg>
+        </button>
+        <div class="menu" id="menu" hidden>
+          <button data-act="savePreset">★ Guardar como preset</button>
+          <button data-act="exportProject">⤓ Exportar proyecto (.json)</button>
+          <button data-act="importProject">⤒ Importar proyecto</button>
+          <button data-act="swap">⇅ Intercambiar pistas</button>
+          <button data-act="reset">↺ Restablecer transición</button>
+          <button data-act="demo">♫ Cargar canciones demo</button>
+          <button data-act="help">? Atajos y ayuda</button>
+        </div>
+      </div>
+      <button class="save-btn" id="exportBtn" title="Exportar la transición como WAV">Exportar</button>
+    </div>
+  </header>
+
+  <main class="app">
+    <!-- Deck A -->
+    <section class="deck" id="deckA" data-deck="A"></section>
+
+    <!-- Editor -->
+    <section class="editor-wrap">
+      <div class="editor" id="editor">
+        <canvas id="editorCanvas"></canvas>
+        <button class="play-fab" id="playBtn" aria-label="Reproducir">
+          <svg class="i-play" viewBox="0 0 24 24" width="26" height="26"><path d="M7 4.5v15l13-7.5z" fill="currentColor"/></svg>
+          <svg class="i-stop" viewBox="0 0 24 24" width="22" height="22"><rect x="5" y="5" width="14" height="14" rx="2" fill="currentColor"/></svg>
+        </button>
+        <div class="busy" id="busy" hidden><span class="spinner"></span><span id="busyText">Procesando…</span></div>
+        <div class="empty-state" id="emptyState">
+          <p>Carga dos canciones para diseñar tu transición</p>
+          <button class="pill-btn" id="demoBtn">♫ Probar con canciones demo</button>
+        </div>
+      </div>
+      <div class="transport">
+        <button class="chip" id="toStartBtn" title="Ir al inicio">⏮</button>
+        <button class="chip" id="toTransBtn" title="Ir al inicio de la transición">⇥ Transición</button>
+        <span class="time" id="timeLabel">0:00.0</span>
+        <span class="spacer"></span>
+        <button class="chip toggle" id="loopBtn" aria-pressed="false" title="Repetir en bucle">⟳ Bucle</button>
+        <button class="chip toggle on" id="snapBtn" aria-pressed="true" title="Ajustar a la rejilla de beats">⌗ Rejilla</button>
+        <button class="chip toggle on" id="fxViewBtn" aria-pressed="true" title="Mostrar el efecto de la automatización sobre la onda">◐ Vista FX</button>
+      </div>
+      <canvas id="spectrum" class="spectrum" height="40"></canvas>
+      <div class="point-bar" id="pointBar" hidden></div>
+    </section>
+
+    <!-- Deck B -->
+    <section class="deck" id="deckB" data-deck="B"></section>
+
+    <!-- Presets -->
+    <section class="block">
+      <div class="divider"><span>Presets</span></div>
+      <div class="presets" id="presets"></div>
+      <p class="preset-desc" id="presetDesc"></p>
+    </section>
+
+    <!-- Lanes -->
+    <section class="block">
+      <div class="divider"><span>Automatización</span></div>
+      <div class="lanes" id="lanes"></div>
+    </section>
+
+    <div class="grid2">
+      <!-- Transition settings -->
+      <section class="block card">
+        <h3>Transición</h3>
+        <div class="field">
+          <label>Duración</label>
+          <div class="seg" id="barsSeg"></div>
+        </div>
+        <div class="field">
+          <label>Sincronización de tempo</label>
+          <div class="seg" id="syncSeg">
+            <button data-v="toA">B → tempo A</button>
+            <button data-v="toB">A → tempo B</button>
+            <button data-v="off">Libre</button>
+          </div>
+          <small class="hint" id="syncHint"></small>
+        </div>
+        <div class="field row">
+          <label>Antes / después</label>
+          <div class="stepper" id="preStep"></div>
+          <div class="stepper" id="postStep"></div>
+        </div>
+        <div class="field">
+          <label>Eco · división <output id="echoDivOut"></output></label>
+          <div class="seg" id="echoSeg">
+            <button data-v="0.25">1/16</button><button data-v="0.5">1/8</button><button data-v="0.75">3/16</button><button data-v="1">1/4</button><button data-v="2">1/2</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Eco · realimentación <output id="fbOut"></output></label>
+          <input type="range" id="fbRange" min="0" max="0.9" step="0.01">
+        </div>
+        <div class="field">
+          <label>Reverb · tamaño <output id="revOut"></output></label>
+          <input type="range" id="revRange" min="0" max="1" step="0.01">
+        </div>
+        <div class="field">
+          <label>Filtro · resonancia <output id="resOut"></output></label>
+          <input type="range" id="resRange" min="0.5" max="8" step="0.1">
+        </div>
+        <div class="field">
+          <label>Ganancia master <output id="masterOut"></output></label>
+          <input type="range" id="masterRange" min="-12" max="6" step="0.5">
+        </div>
+      </section>
+
+      <!-- Harmony -->
+      <section class="block card">
+        <h3>Compatibilidad</h3>
+        <div class="compat" id="compat"></div>
+        <div class="wheel" id="wheel"></div>
+      </section>
+    </div>
+
+    <footer class="foot">
+      Todo el audio se procesa en tu dispositivo. Nada se sube a ningún servidor.
+    </footer>
+  </main>
+
+  <input type="file" id="fileInput" accept="audio/*" hidden>
+  <input type="file" id="projectInput" accept="application/json,.json" hidden>
+  <div class="toast" id="toast" hidden></div>
+  <dialog id="helpDlg">
+    <h3>Cómo usar Mixeo</h3>
+    <ul>
+      <li><b>Curvas:</b> toca dentro del recuadro para añadir un punto; arrástralo para moverlo. Mitad superior = pista saliente (A), inferior = entrante (B).</li>
+      <li><b>Punto seleccionado:</b> elige la forma del tramo (suave, lineal, rápida, lenta, escalón) o elimínalo. Doble toque también elimina.</li>
+      <li><b>Puntos de mezcla:</b> arrastra el marcador en la miniatura de cada pista o usa ±beat / ±compás.</li>
+      <li><b>Regla superior:</b> toca para saltar a ese instante.</li>
+      <li><b>Teclado:</b> Espacio reproducir/parar · Supr borrar punto · Ctrl+Z / Ctrl+Shift+Z deshacer/rehacer · 1–8 cambiar de carril.</li>
+      <li><b>Armonizar:</b> transpone la pista B al tono compatible más cercano (rueda Camelot).</li>
+    </ul>
+    <form method="dialog"><button class="pill-btn">Entendido</button></form>
+  </dialog>
+
+  <script src="js/dsp.js"></script>
+  <script src="js/theory.js"></script>
+  <script src="js/automation.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/demo.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
